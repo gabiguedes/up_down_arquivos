@@ -1,39 +1,54 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"os"
+	"io"
+	"net/http"
 )
 
-const (
-	NOME_ARQUIVO_LER = "C:/Users/Gabi Guedes/Documents/uploadarquivos/ler.txt"
-	CRIA_ARQUIVO     = "C:/Users/Gabi Guedes/Documents/uploadarquivos/test.txt"
-)
-
-func readFile(nomearquivo string) ([]byte, error) {
-	rd, err := os.ReadFile(nomearquivo)
-	if err != nil {
-		fmt.Printf("Ocorre um erro na leitura do arquivo - Details %s", err.Error())
-		panic(err)
-	}
-	return rd, nil
+func getRoot(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("address:[::]:8080: got / request\n")
+	io.WriteString(w, "Aquecendo os motores!\n")
 }
 
-func writeFile(data []byte) error {
-	err := os.WriteFile(CRIA_ARQUIVO, data, 0644)
+type Request struct {
+	Arquivo []byte `json:"arquivo" validate:"required"`
+}
+
+type Response struct {
+	Msg string `json:"msg"`
+}
+
+func upload(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		fmt.Printf("algo deu ruim... %s", err.Error())
+		fmt.Println(err)
 		panic(err)
 	}
-	return nil
+
+	res := Response{
+		"deu bom demais",
+	}
+
+	fmt.Println("response ", res.Msg)
+	b, err := json.Marshal(res)
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Println("marshal ", string(b))
+
+	io.WriteString(w, string(b))
+	fmt.Printf("body: %s", body)
 }
 
 func main() {
-	rd, _ := readFile(NOME_ARQUIVO_LER)
+	http.HandleFunc("/", getRoot)
+	http.HandleFunc("/arquivo", upload)
 
-	data := []byte("Loucura é querer resultados diferentes fazendo tudo exatamente igual")
-	_ = writeFile(data)
+	fmt.Println("======= Start server =======")
+	fmt.Println("======= Listening on =======")
 
-	fmt.Printf("O arquivo %s contém a seguinte mensagem:\n %s", NOME_ARQUIVO_LER, rd)
-	fmt.Printf("O arquivo %s contém a seguinte mensagem:\n %s", CRIA_ARQUIVO, rd)
+	_ = http.ListenAndServe(":8080", nil)
 }
