@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,39 +14,59 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 type Request struct {
-	Arquivo []byte `json:"arquivo" validate:"required"`
+	Base64 string `json:"base64"`
 }
 
 type Response struct {
 	Msg string `json:"msg"`
 }
 
+func validateHeader(w http.ResponseWriter, r *http.Request) error {
+	header := r.Header.Get("Content-Type")
+	if header != "application/json" {
+		http.Error(w, "Content Type is not application/json", http.StatusUnsupportedMediaType)
+		return errors.New("Header inválido")
+	}
+
+	return nil
+}
+
 func upload(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
+	err := validateHeader(w, r)
 	if err != nil {
-		fmt.Println(err)
-		panic(err)
+		http.Error(w, err.Error(), 400)
+	}
+
+	bunmarshal, err := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	var req Request
+	err = json.Unmarshal(bunmarshal, &req)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
 	}
 
 	res := Response{
-		"deu bom demais",
+		"Seu upload foi feito com sucesso!",
 	}
 
-	fmt.Println("response ", res.Msg)
-	b, err := json.Marshal(res)
+	bmarshal, err := json.Marshal(res)
 	if err != nil {
-		fmt.Println("Error: ", err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 
-	fmt.Println("marshal ", string(b))
-
-	io.WriteString(w, string(b))
-	fmt.Printf("body: %s", body)
+	io.WriteString(w, string(bmarshal))
 }
 
 func main() {
 	http.HandleFunc("/", getRoot)
-	http.HandleFunc("/arquivo", upload)
+	http.HandleFunc("/upload", upload)
 
 	fmt.Println("======= Start server =======")
 	fmt.Println("======= Listening on =======")
