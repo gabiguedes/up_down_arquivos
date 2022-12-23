@@ -54,7 +54,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) *Request {
 }
 
 func handlerResponse(w http.ResponseWriter) map[string]string {
-	response := map[string]string{"msg": "Seu upload foi feito com sucesso!"}
+	response := map[string]string{"msg": "Your upload was successful!"}
 	_, err := json.Marshal(response)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -74,8 +74,9 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	handleRequest(w, r)
+	res := handlerResponse(w)
 
-	io.WriteString(w, "your upload was successful")
+	io.WriteString(w, res["msg"])
 }
 
 func main() {
