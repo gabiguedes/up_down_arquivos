@@ -10,58 +10,72 @@ import (
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("address:[::]:8080: got / request\n")
-	io.WriteString(w, "Aquecendo os motores!\n")
+	io.WriteString(w, "warming up the engines!\n")
 }
 
 type Request struct {
-	Base64 string `json:"base64"`
+	Base64 string `json:"base64" json:"required" json:"base64"`
 }
 
 type Response struct {
 	Msg string `json:"msg"`
 }
 
-func validateHeader(w http.ResponseWriter, r *http.Request) error {
+func validateHeader(r *http.Request) error {
 	header := r.Header.Get("Content-Type")
 	if header != "application/json" {
-		http.Error(w, "Content Type is not application/json", http.StatusUnsupportedMediaType)
-		return errors.New("Header inválido")
+		return errors.New("header required")
 	}
 
 	return nil
 }
 
-func upload(w http.ResponseWriter, r *http.Request) {
-	err := validateHeader(w, r)
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-	}
-
-	bunmarshal, err := io.ReadAll(r.Body)
+func handleRequest(w http.ResponseWriter, r *http.Request) *Request {
+	unmarshal, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		http.Error(w, err.Error(), 500)
-		return
+		io.WriteString(w, err.Error())
+		return nil
 	}
 
 	var req Request
-	err = json.Unmarshal(bunmarshal, &req)
+	m := make(map[string]string)
+
+	err = json.Unmarshal(unmarshal, &m)
+	if err != nil {
+		http.Error(w, err.Error(), 422)
+		io.WriteString(w, err.Error())
+		return nil
+	}
+
+	req.Base64 = m["base64"]
+	return &req
+}
+
+func handlerResponse(w http.ResponseWriter) map[string]string {
+	response := map[string]string{"msg": "Seu upload foi feito com sucesso!"}
+	_, err := json.Marshal(response)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
+		io.WriteString(w, err.Error())
+		return nil
+	}
+
+	return response
+}
+
+func upload(w http.ResponseWriter, r *http.Request) {
+	err := validateHeader(r)
+	if err != nil {
+		http.Error(w, "Content-Type application/json is required", http.StatusUnsupportedMediaType)
+		io.WriteString(w, err.Error())
 		return
 	}
 
-	res := Response{
-		"Seu upload foi feito com sucesso!",
-	}
+	handleRequest(w, r)
 
-	bmarshal, err := json.Marshal(res)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	io.WriteString(w, string(bmarshal))
+	io.WriteString(w, "your upload was successful")
 }
 
 func main() {
@@ -69,7 +83,6 @@ func main() {
 	http.HandleFunc("/upload", upload)
 
 	fmt.Println("======= Start server =======")
-	fmt.Println("======= Listening on =======")
 
 	_ = http.ListenAndServe(":8080", nil)
 }
