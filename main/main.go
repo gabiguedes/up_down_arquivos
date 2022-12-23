@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	_ "github.com/lib/pq"
 	"io"
 	"net/http"
+	"uploadarquivos/main/databaseconfig"
 )
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +87,18 @@ func main() {
 	http.HandleFunc("/upload", upload)
 
 	fmt.Println("======= Start server =======")
+
+	fmt.Printf("Accessing [%s] database... ", databaseconfig.Dbname)
+
+	db, err := sql.Open(databaseconfig.PostgresDriver, databaseconfig.Datasource)
+
+	if err != nil {
+		panic(err.Error())
+	} else {
+		fmt.Println("Connected!")
+	}
+
+	defer db.Close()
 
 	_ = http.ListenAndServe(":8080", nil)
 }
