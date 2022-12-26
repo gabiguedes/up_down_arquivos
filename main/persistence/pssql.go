@@ -1,9 +1,10 @@
-package databaseconfig
+package persistence
 
 import "fmt"
 
-type Files struct {
-	file string
+type Arquivo struct {
+	ID    int
+	Corpo []byte
 }
 
 const (
@@ -11,7 +12,7 @@ const (
 	host           = "localhost"
 	port           = "5432"
 	user           = "postgres"
-	password       = ""
+	password       = "123"
 	Dbname         = "files"
 )
 
