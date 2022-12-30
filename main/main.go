@@ -25,10 +25,53 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	server.HandleRequest(w, r)
+	req := server.HandleRequest(w, r)
+	psInsert(req.Base64)
 	res := server.HandlerResponse(w)
 
 	io.WriteString(w, res["msg"])
+}
+
+func download(w http.ResponseWriter, r *http.Request) {
+	res := psSelectPorID()
+
+	io.WriteString(w, string(res.Corpo))
+}
+
+func psInsert(base64 string) {
+	sqlStatement := fmt.Sprintf("INSERT INTO %s VALUES ($1,$2)", "arquivo")
+
+	insert, err := db.Prepare(sqlStatement)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	result, err := insert.Exec(2, base64)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	affect, err := result.RowsAffected()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(affect)
+}
+
+func psSelectPorID() *persistence.Arquivo {
+	var arquivo persistence.Arquivo
+
+	sqlStatement := fmt.Sprintf("SELECT id, corpo FROM %s where id = $1", "arquivo")
+
+	err := db.QueryRow(sqlStatement, 2).Scan(&arquivo.ID, &arquivo.Corpo)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Printf("%d\t%s \n", arquivo.ID, arquivo.Corpo)
+
+	return &arquivo
 }
 
 func psSelect() {
@@ -40,14 +83,13 @@ func psSelect() {
 	for state.Next() {
 		var arquivo persistence.Arquivo
 		err = state.Scan(&arquivo.ID, &arquivo.Corpo)
-
-		fmt.Printf("\n RESULTS [%d\t%s] \n", arquivo.ID, arquivo.Corpo)
 	}
 }
 
 func main() {
 	http.HandleFunc("/", getRoot)
 	http.HandleFunc("/upload", upload)
+	http.HandleFunc("/download", download)
 	fmt.Println("======= Start server =======")
 
 	fmt.Printf("Accessing [%s] database... ", persistence.Dbname)
